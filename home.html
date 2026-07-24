@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RS Attendance Management System</title>
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <style>
+    :root { --gov-blue: #0b3d91; --gov-saffron: #ff9933; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--gov-blue), #1b5fb0 60%, #0a2b63);
+      background-attachment: fixed;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 20px;
+    }
+    .panel + .panel { margin-top: 16px; }
+    .panel {
+      width: 100%; max-width: 420px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.32);
+      backdrop-filter: blur(16px);
+      border-radius: 18px;
+      padding: 28px 26px;
+      color: #f5f7fa;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+    }
+    .badge {
+      display: inline-block;
+      background: var(--gov-saffron);
+      color: #1a1200;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      margin-bottom: 14px;
+    }
+    h2 { font-size: 19px; margin-bottom: 4px; }
+    .sub { font-size: 12.5px; opacity: 0.8; margin-bottom: 20px; }
+    .row {
+      display: flex; justify-content: space-between;
+      font-size: 13px;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+    .row span:first-child { opacity: 0.75; }
+    .row span:last-child { font-weight: 600; }
+    .note {
+      margin-top: 18px;
+      font-size: 11.5px;
+      opacity: 0.75;
+      line-height: 1.5;
+      background: rgba(255,255,255,0.08);
+      padding: 10px 12px;
+      border-radius: 10px;
+    }
+    .btn {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(229,72,77,0.85);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn:hover { background: rgba(229,72,77,1); }
+    .portal-panel { max-width: 460px; }
+    .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+    .tab-btn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25); color:#fff; padding:7px 12px; border-radius:16px; font-size:11px; cursor:pointer; }
+    .tab-btn.active { background: var(--gov-saffron); color:#1a1200; font-weight:700; border-color:transparent; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+    .hist-row { display:flex; justify-content:space-between; font-size:11.5px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.12); gap:8px; }
+    .hist-row:last-child { border-bottom:none; }
+    .hist-status { font-weight:700; }
+    .mini-stat { display:inline-block; background:rgba(255,255,255,0.08); border-radius:8px; padding:8px 12px; margin:4px 6px 4px 0; font-size:11.5px; }
+    .form-row { margin-bottom:10px; }
+    .form-row label { display:block; font-size:11.5px; margin-bottom:5px; opacity:0.85; }
+    .form-row input, .form-row select, .form-row textarea { width:100%; padding:9px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; font-size:12.5px; }
+    .form-row textarea { resize:vertical; min-height:50px; }
+    .small-msg { font-size:11.5px; padding:8px 10px; border-radius:8px; margin-top:8px; }
+    .small-msg.ok { background:rgba(31,169,113,0.2); border:1px solid rgba(31,169,113,0.4); }
+    .small-msg.err { background:rgba(229,72,77,0.2); border:1px solid rgba(229,72,77,0.4); }
+    .btn.secondary { background: rgba(255,255,255,0.14); }
+    .profile-photo { width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.4); margin-bottom:10px; background: rgba(255,255,255,0.1); }
+    .theme-toggle {
+      position: fixed; top: 14px; right: 14px; z-index: 60;
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+      color: #fff; border-radius: 20px; padding: 6px 12px; font-size: 11px; cursor: pointer;
+    }
+    body[data-theme="light"] { background: linear-gradient(135deg, #eef3fb 0%, #dbe7fb 45%, #f4f7fc 100%); }
+    body[data-theme="light"] .panel { background: rgba(11,61,145,0.06); border-color: rgba(11,61,145,0.18); color: #14213d; }
+    body[data-theme="light"] .theme-toggle { background: rgba(11,61,145,0.08); border-color: rgba(11,61,145,0.25); color: #14213d; }
+    body[data-theme="light"] .tab-btn { background: rgba(11,61,145,0.08); border-color: rgba(11,61,145,0.25); color: #14213d; }
+    body[data-theme="light"] .form-row input, body[data-theme="light"] .form-row select, body[data-theme="light"] .form-row textarea { background: rgba(11,61,145,0.05); border-color: rgba(11,61,145,0.25); color: #14213d; }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">🌙 Dark</button>
+  <div class="panel">
+    <span class="badge" id="fRole">—</span>
+    <h2>Welcome, <span id="fFullName">—</span></h2>
+    <div class="sub">RS Attendance Management System</div>
+
+    <div class="row"><span>Employee ID</span><span id="fEmployeeId">—</span></div>
+    <div class="row"><span>Department</span><span id="fDepartment">—</span></div>
+    <div class="row"><span>Designation</span><span id="fDesignation">—</span></div>
+    <div class="row"><span>Office</span><span>Office of Block Chief Medical Officer, Banera, Bhilwara</span></div>
+
+    <div class="note" id="statusNote">Checking today's attendance status…</div>
+    <div id="queueBadge" style="display:none; margin-top:10px; font-size:11.5px; background: rgba(255,153,51,0.18); border: 1px solid rgba(255,153,51,0.4); padding: 8px 12px; border-radius: 8px;"></div>
+
+    <button class="btn attend-btn" id="markInBtn" style="display:none; background: rgba(31,169,113,0.85);" onclick="openCapture('IN')">Mark In</button>
+    <button class="btn attend-btn" id="markOutBtn" style="display:none; background: rgba(255,153,51,0.9); color:#1a1200;" onclick="openCapture('OUT')">Mark Out</button>
+
+    <button class="btn" style="background: rgba(255,255,255,0.15); position:relative;" onclick="toggleNotifications()">
+      🔔 <span id="notifBadge" style="display:none; position:absolute; top:-6px; right:-6px; background:#e5484d; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:1px 6px;"></span>
+    </button>
+    <div id="notifPanel" style="display:none; margin-top:10px; max-height:260px; overflow-y:auto; background:rgba(0,0,0,0.2); border-radius:10px; padding:10px;"></div>
+
+    <button class="btn" style="background: rgba(255,255,255,0.15); display:none;" id="backToAdminBtn" onclick="backToAdmin()">← Back to Admin Dashboard</button>
+    <button class="btn" onclick="handleLogout()">Logout</button>
+  </div>
+
+  <!-- Employee Portal (Module 6) -->
+  <div class="panel portal-panel">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="history" onclick="switchTab('history')">History</button>
+      <button class="tab-btn" data-tab="summary" onclick="switchTab('summary')">Monthly Summary</button>
+      <button class="tab-btn" data-tab="leave" onclick="switchTab('leave')">Leave</button>
+      <button class="tab-btn" data-tab="holidays" onclick="switchTab('holidays')">Holidays</button>
+      <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')">Profile</button>
+    </div>
+
+    <div class="tab-content active" id="tab-history">
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <button class="btn small secondary" style="padding:7px 12px; font-size:11px;" onclick="downloadHistory()">Download CSV</button>
+      </div>
+      <div id="historyList"><div class="sub">Loading…</div></div>
+    </div>
+
+    <div class="tab-content" id="tab-summary">
+      <div class="form-row">
+        <label for="summaryMonth">Month</label>
+        <input type="month" id="summaryMonth" onchange="loadSummary()">
+      </div>
+      <div id="summaryStats"><div class="sub">Loading…</div></div>
+    </div>
+
+    <div class="tab-content" id="tab-leave">
+      <div id="leaveBalance"><div class="sub">Loading…</div></div>
+      <div style="margin:14px 0 8px; font-weight:700; font-size:12.5px;">Apply for Leave</div>
+      <div class="form-row">
+        <label>Leave Type</label>
+        <select id="leaveType"><option value="Casual">Casual</option><option value="Earned">Earned</option><option value="Sick">Sick (unpaid entitlement tracking)</option></select>
+      </div>
+      <div class="form-row"><label>From</label><input type="date" id="leaveFrom"></div>
+      <div class="form-row"><label>To</label><input type="date" id="leaveTo"></div>
+      <div class="form-row"><label>Reason</label><textarea id="leaveReason" placeholder="Brief reason"></textarea></div>
+      <button class="btn" onclick="submitLeave()">Submit Application</button>
+      <div id="leaveMsg"></div>
+      <div style="margin:14px 0 8px; font-weight:700; font-size:12.5px;">My Leave History</div>
+      <div id="leaveHistory"><div class="sub">Loading…</div></div>
+    </div>
+
+    <div class="tab-content" id="tab-holidays">
+      <div id="holidayList"><div class="sub">Loading…</div></div>
+    </div>
+
+    <div class="tab-content" id="tab-profile">
+      <img id="profilePhotoImg" class="profile-photo" src="" style="display:none;">
+      <div class="form-row">
+        <label>Upload Profile Photo</label>
+        <input type="file" id="profilePhotoInput" accept="image/*" onchange="handleProfilePhotoChange(event)">
+      </div>
+      <div class="form-row"><label>Email</label><input type="email" id="profileEmail"></div>
+      <div class="form-row"><label>Phone</label><input type="text" id="profilePhone"></div>
+      <button class="btn" onclick="saveProfile()">Save Profile</button>
+      <div id="profileMsg"></div>
+
+      <div style="margin:18px 0 8px; font-weight:700; font-size:12.5px;">Change Password</div>
+      <div class="form-row"><label>Current Password</label><input type="password" id="oldPassword"></div>
+      <div class="form-row"><label>New Password</label><input type="password" id="newPassword"></div>
+      <button class="btn secondary" onclick="submitPasswordChange()">Change Password</button>
+      <div id="passwordMsg"></div>
+    </div>
+  </div>
+
+  <!-- Capture Modal: live camera + GPS, no gallery upload possible -->
+  <div id="captureModal" style="display:none; position:fixed; inset:0; background:rgba(5,15,35,0.92); z-index:50; align-items:center; justify-content:center; flex-direction:column; padding:20px;">
+    <div style="width:100%; max-width:380px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); border-radius:16px; padding:18px; color:#f5f7fa;">
+      <div style="font-weight:700; font-size:14px; margin-bottom:10px;" id="captureTitle">Live Selfie — Mark In</div>
+      <div style="position:relative; width:100%; aspect-ratio:3/4; background:#000; border-radius:12px; overflow:hidden;">
+        <video id="camVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:block;"></video>
+        <canvas id="camCanvas" style="display:none;"></canvas>
+        <img id="capturedPreview" style="display:none; width:100%; height:100%; object-fit:cover;">
+        <div id="countdownOverlay" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center; font-size:56px; font-weight:800; color:#fff; background:rgba(0,0,0,0.35);"></div>
+      </div>
+      <div id="captureStatus" style="font-size:11.5px; opacity:0.85; margin-top:10px; line-height:1.5; min-height:32px;">Requesting camera access…</div>
+      <button class="btn" id="captureActionBtn" style="margin-top:12px; background: var(--gov-saffron, #ff9933); color:#1a1200;" onclick="handleCaptureAction()" disabled>Capture</button>
+      <button class="btn" style="margin-top:8px; background: rgba(255,255,255,0.15);" onclick="closeCapture()">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    const session = requireSession_(); // redirects to index.html if not logged in
+    const sessionToken = session.token;
+    const EMPLOYEE_ID = session.employee.employeeId;
+
+    document.getElementById('fRole').textContent = session.employee.role;
+    document.getElementById('fFullName').textContent = session.employee.fullName;
+    document.getElementById('fEmployeeId').textContent = session.employee.employeeId;
+    document.getElementById('fDepartment').textContent = session.employee.department || '—';
+    document.getElementById('fDesignation').textContent = session.employee.designation || '—';
+
+    if (localStorage.getItem('rsams_admin_viewing_own') === 'true') {
+      document.getElementById('backToAdminBtn').style.display = 'block';
+    }
+
+    let mediaStream = null;
+    let captureDirection = null; // 'IN' or 'OUT'
+    let capturedBase64 = null;
+    let gpsPosition = null;
+
+    async function openCapture(direction) {
+      captureDirection = direction;
+      capturedBase64 = null;
+      gpsPosition = null;
+      document.getElementById('captureTitle').textContent = 'Live Selfie — Mark ' + direction;
+      document.getElementById('captureModal').style.display = 'flex';
+      document.getElementById('capturedPreview').style.display = 'none';
+      document.getElementById('camVideo').style.display = 'block';
+      document.getElementById('captureActionBtn').textContent = 'Capture';
+      document.getElementById('captureActionBtn').disabled = true;
+      setCaptureStatus('Requesting camera access…');
+
+      if (!window.isSecureContext) {
+        setCaptureStatus('Camera blocked: this page is not running in a secure (HTTPS) context.');
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCaptureStatus('Camera blocked: getUserMedia is not available in this browser/frame (navigator.mediaDevices is ' +
+          (navigator.mediaDevices ? 'present but getUserMedia missing' : 'undefined') +
+          ') — this usually means the hosting iframe is not permitted to use the camera.');
+        return;
+      }
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+        document.getElementById('camVideo').srcObject = mediaStream;
+        setCaptureStatus('Camera ready. Fetching GPS location…');
+        requestGpsLocation();
+      } catch (err) {
+        // Surface the browser's exact error name/message instead of a generic
+        // string — NotAllowedError (user/OS denied), SecurityError (blocked by
+        // the page/iframe's permissions policy), and NotFoundError (no camera
+        // device) each point to a different fix, so this detail matters.
+        setCaptureStatus('Camera error: ' + (err && err.name ? err.name : 'Unknown') + ' — ' +
+          (err && err.message ? err.message : String(err)));
+        document.getElementById('captureActionBtn').disabled = true;
+      }
+    }
+
+    function requestGpsLocation() {
+      if (!navigator.geolocation) {
+        setCaptureStatus('GPS is not supported on this device/browser. Attendance cannot be marked.');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          gpsPosition = pos.coords;
+          setCaptureStatus('Camera and GPS ready (accuracy ' + Math.round(pos.coords.accuracy) + 'm). Tap Capture.');
+          document.getElementById('captureActionBtn').disabled = false;
+        },
+        function (err) {
+          setCaptureStatus('Location permission denied or unavailable. Attendance cannot be marked without GPS.');
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    }
+
+    function setCaptureStatus(text) {
+      document.getElementById('captureStatus').textContent = text;
+    }
+
+    function handleCaptureAction() {
+      if (capturedBase64) {
+        submitAttendance();
+      } else {
+        runCountdownAndCapture();
+      }
+    }
+
+    function runCountdownAndCapture() {
+      const overlay = document.getElementById('countdownOverlay');
+      overlay.style.display = 'flex';
+      document.getElementById('captureActionBtn').disabled = true;
+      let count = 3;
+      overlay.textContent = count;
+      const timer = setInterval(function () {
+        count -= 1;
+        if (count === 0) {
+          overlay.textContent = '📸';
+        } else if (count < 0) {
+          clearInterval(timer);
+          overlay.style.display = 'none';
+          performCapture();
+          return;
+        } else {
+          overlay.textContent = count;
+        }
+      }, 700);
+    }
+
+    function performCapture() {
+      const video = document.getElementById('camVideo');
+      const canvas = document.getElementById('camCanvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Overlay: Employee ID + server-agnostic client timestamp (server timestamp
+      // is the authority for attendance logic; this overlay is a visual proof
+      // stamp only, consistent with the raw exchangeable/server time recorded).
+      const stamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+      const label = EMPLOYEE_ID + '  |  ' + stamp + '  |  Mark ' + captureDirection;
+      const fontSize = Math.max(14, Math.round(canvas.width / 28));
+      ctx.font = fontSize + 'px sans-serif';
+      const textWidth = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, canvas.height - fontSize - 16, Math.min(canvas.width, textWidth + 20), fontSize + 16);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, 10, canvas.height - 14);
+
+      compressToTargetSize(canvas, 150, 250, function (base64) {
+        capturedBase64 = base64;
+        document.getElementById('capturedPreview').src = base64;
+        document.getElementById('capturedPreview').style.display = 'block';
+        document.getElementById('camVideo').style.display = 'none';
+        document.getElementById('captureActionBtn').textContent = 'Confirm & Submit';
+        document.getElementById('captureActionBtn').disabled = false;
+        setCaptureStatus('Selfie captured. Review and confirm to submit attendance.');
+      });
+    }
+
+    /** Binary-searches JPEG quality so the encoded size lands within [minKB,maxKB]. */
+    function compressToTargetSize(canvas, minKB, maxKB, callback) {
+      let low = 0.2, high = 0.92, best = null;
+      for (let i = 0; i < 6; i++) {
+        const mid = (low + high) / 2;
+        const dataUrl = canvas.toDataURL('image/jpeg', mid);
+        const sizeKB = Math.round((dataUrl.length * 0.75) / 1024);
+        if (sizeKB > maxKB) {
+          high = mid;
+        } else if (sizeKB < minKB) {
+          low = mid;
+          best = dataUrl;
+        } else {
+          best = dataUrl;
+          break;
+        }
+        best = best || dataUrl;
+      }
+      callback(best);
+    }
+
+    const OFFLINE_QUEUE_KEY = 'rsams_offline_queue';
+
+    function generateClientRequestId() {
+      return 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+    }
+
+    function readQueue() {
+      try {
+        return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+      } catch (e) { return []; }
+    }
+
+    function writeQueue(queue) {
+      localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+      updateQueueBadge();
+    }
+
+    function updateQueueBadge() {
+      const queue = readQueue();
+      const badge = document.getElementById('queueBadge');
+      if (!badge) return;
+      if (queue.length === 0) {
+        badge.style.display = 'none';
+      } else {
+        badge.style.display = 'block';
+        badge.textContent = queue.length + ' attendance record(s) waiting to sync…';
+      }
+    }
+
+    function submitAttendance() {
+      document.getElementById('captureActionBtn').disabled = true;
+      document.getElementById('captureActionBtn').textContent = 'Submitting…';
+
+      const evidence = {
+        clientRequestId: generateClientRequestId(),
+        selfieBase64: capturedBase64,
+        latitude: gpsPosition.latitude,
+        longitude: gpsPosition.longitude,
+        accuracy: gpsPosition.accuracy,
+        altitude: gpsPosition.altitude || '',
+        speed: gpsPosition.speed || '',
+        heading: gpsPosition.heading || '',
+        userAgent: navigator.userAgent,
+        screenResolution: screen.width + 'x' + screen.height,
+        platform: navigator.platform || ''
+      };
+      const direction = captureDirection;
+
+      if (!navigator.onLine) {
+        queueForOfflineSync(direction, evidence);
+        closeCapture();
+        document.getElementById('statusNote').textContent =
+          'You are offline. This attendance has been saved on this device and will sync automatically once you are back online.';
+        return;
+      }
+
+      sendAttendance(direction, evidence, function (res, err) {
+        if (err) {
+          // Network-level failure even though navigator.onLine said we're online
+          // (flaky connection) — queue it rather than lose the capture.
+          queueForOfflineSync(direction, evidence);
+          closeCapture();
+          document.getElementById('statusNote').textContent =
+            'Could not reach the server. Saved on this device and will retry automatically.';
+          return;
+        }
+        closeCapture();
+        document.getElementById('statusNote').textContent = res.message +
+          (res.geofenceStatus ? ' (' + res.geofenceStatus + ', ' + res.distanceMeters + 'm from office)' : '');
+        refreshStatus();
+      });
+    }
+
+    function sendAttendance(direction, evidence, callback) {
+      const fn = direction === 'IN' ? 'markIn' : 'markOut';
+      google.script.run
+        .withSuccessHandler(function (res) { callback(res, null); })
+        .withFailureHandler(function (err) { callback(null, err); })
+        [fn](sessionToken, evidence);
+    }
+
+    function queueForOfflineSync(direction, evidence) {
+      const queue = readQueue();
+      queue.push({ direction: direction, evidence: evidence, queuedAt: Date.now(), attempts: 0 });
+      writeQueue(queue);
+    }
+
+    /**
+     * Syncs queued attendance one at a time (oldest first) so a Mark In always
+     * reaches the server before its Mark Out. Each item carries the same
+     * clientRequestId it was captured with, so if a prior sync attempt actually
+     * succeeded server-side but the response was lost, the server recognizes
+     * the duplicate and returns the original result instead of erroring —
+     * preventing double-marked attendance from retries.
+     */
+    let syncInProgress = false;
+    function syncOfflineQueue() {
+      if (syncInProgress || !navigator.onLine) return;
+      const queue = readQueue();
+      if (queue.length === 0) return;
+
+      syncInProgress = true;
+      const item = queue[0];
+      item.attempts += 1;
+
+      sendAttendance(item.direction, item.evidence, function (res, err) {
+        syncInProgress = false;
+        if (err) {
+          // Leave it queued; will retry on the next online event or poll tick.
+          writeQueue(queue);
+          return;
+        }
+        // Success (or server-confirmed duplicate) — remove from queue and continue.
+        const remaining = readQueue();
+        remaining.shift();
+        writeQueue(remaining);
+        refreshStatus();
+        if (remaining.length > 0) syncOfflineQueue();
+      });
+    }
+
+    window.addEventListener('online', syncOfflineQueue);
+    setInterval(syncOfflineQueue, 30000); // periodic retry in case the 'online' event is missed
+
+    function closeCapture() {
+      document.getElementById('captureModal').style.display = 'none';
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(function (t) { t.stop(); });
+        mediaStream = null;
+      }
+      capturedBase64 = null;
+      gpsPosition = null;
+    }
+
+    function refreshStatus() {
+      google.script.run
+        .withSuccessHandler(function (res) {
+          const note = document.getElementById('statusNote');
+          const inBtn = document.getElementById('markInBtn');
+          const outBtn = document.getElementById('markOutBtn');
+          if (!res.success) {
+            note.textContent = res.message || 'Unable to load status.';
+            return;
+          }
+          if (!res.hasMarkedIn) {
+            note.textContent = "Today's status: " + res.status + '. You have not marked in yet.';
+            inBtn.style.display = (res.status === 'Holiday' || res.status.indexOf('Holiday') === 0 || res.status === 'Weekly Off') ? 'none' : 'block';
+            outBtn.style.display = 'none';
+          } else if (!res.hasMarkedOut) {
+            note.textContent = 'Marked in at ' + res.markIn + ' — status: ' + res.status + '. Mark out when you leave.';
+            inBtn.style.display = 'none';
+            outBtn.style.display = 'block';
+          } else {
+            note.textContent = 'Completed for today — In: ' + res.markIn + ', Out: ' + res.markOut +
+              ', Working Hours: ' + res.workingHours + ', Status: ' + res.status + '.';
+            inBtn.style.display = 'none';
+            outBtn.style.display = 'none';
+          }
+        })
+        .withFailureHandler(function (err) {
+          document.getElementById('statusNote').textContent = 'Error: ' + (err && err.message ? err.message : err);
+        })
+        .getTodayStatus(sessionToken);
+    }
+
+    function backToAdmin() {
+      localStorage.removeItem('rsams_admin_viewing_own');
+      window.location.href = 'admin.html';
+    }
+
+    function handleLogout() {
+      google.script.run
+        .withSuccessHandler(function () {
+          clearSession_();
+          window.location.href = 'index.html';
+        })
+        .logout(sessionToken);
+    }
+
+    // ------------------------------------------------------------------
+    // EMPLOYEE PORTAL (Module 6)
+    // ------------------------------------------------------------------
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+      document.querySelectorAll('.tab-content').forEach(function (c) { c.classList.toggle('active', c.id === 'tab-' + name); });
+      if (name === 'history') loadHistory();
+      if (name === 'summary') loadSummary();
+      if (name === 'leave') { loadLeaveBalance(); }
+      if (name === 'holidays') loadHolidays();
+      if (name === 'profile') loadProfile();
+    }
+
+    function loadHistory() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('historyList').innerHTML = '<div class="sub">' + res.message + '</div>'; return; }
+        if (res.records.length === 0) { document.getElementById('historyList').innerHTML = '<div class="sub">No attendance records yet.</div>'; return; }
+        document.getElementById('historyList').innerHTML = res.records.slice(0, 60).map(function (r) {
+          return '<div class="hist-row"><span>' + r.date + ' (' + r.day + ')</span>' +
+            '<span>' + (r.markIn || '-') + ' → ' + (r.markOut || '-') + '</span>' +
+            '<span class="hist-status">' + r.status + '</span></div>';
+        }).join('');
+      }).getMyAttendanceHistory(sessionToken, {});
+    }
+
+    function downloadHistory() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { alert(res.message); return; }
+        const blob = new Blob([res.csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'my_attendance_' + Date.now() + '.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }).downloadMyAttendanceCSV(sessionToken, {});
+    }
+
+    function loadSummary() {
+      const monthInput = document.getElementById('summaryMonth');
+      if (!monthInput.value) {
+        const now = new Date();
+        monthInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+      }
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('summaryStats').innerHTML = '<div class="sub">' + res.message + '</div>'; return; }
+        const s = res.summary;
+        document.getElementById('summaryStats').innerHTML =
+          '<span class="mini-stat">Present: ' + s.present + '</span>' +
+          '<span class="mini-stat">Late: ' + s.late + '</span>' +
+          '<span class="mini-stat">Half Day: ' + s.halfDay + '</span>' +
+          '<span class="mini-stat">Holiday: ' + s.holiday + '</span>' +
+          '<span class="mini-stat">Weekly Off: ' + s.weeklyOff + '</span>' +
+          '<span class="mini-stat">Total Hours: ' + s.totalWorkingHours + '</span>' +
+          '<span class="mini-stat">Overtime: ' + s.totalOvertimeMinutes + ' min</span>' +
+          '<span class="mini-stat">Late Total: ' + s.totalLateMinutes + ' min</span>';
+      }).getMyMonthlySummary(sessionToken, monthInput.value);
+    }
+
+    function loadLeaveBalance() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('leaveBalance').innerHTML = '<div class="sub">' + res.message + '</div>'; return; }
+        const b = res.balance;
+        document.getElementById('leaveBalance').innerHTML =
+          '<span class="mini-stat">Casual: ' + b.casual.remaining + ' / ' + b.casual.entitled + '</span>' +
+          '<span class="mini-stat">Earned: ' + b.earned.remaining + ' / ' + b.earned.entitled + '</span>';
+        document.getElementById('leaveHistory').innerHTML = res.history.length ?
+          res.history.map(function (l) {
+            return '<div class="hist-row"><span>' + l.LeaveType + ': ' + l.FromDate + ' → ' + l.ToDate + '</span><span class="hist-status">' + l.Status + '</span></div>';
+          }).join('') : '<div class="sub">No leave applications yet.</div>';
+      }).getMyLeaveBalance(sessionToken);
+    }
+
+    function submitLeave() {
+      const payload = {
+        leaveType: document.getElementById('leaveType').value,
+        fromDate: document.getElementById('leaveFrom').value,
+        toDate: document.getElementById('leaveTo').value,
+        reason: document.getElementById('leaveReason').value
+      };
+      google.script.run.withSuccessHandler(function (res) {
+        showSmallMsg('leaveMsg', res.message, res.success);
+        if (res.success) { loadLeaveBalance(); document.getElementById('leaveReason').value = ''; }
+      }).applyLeave(sessionToken, payload);
+    }
+
+    function loadHolidays() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('holidayList').innerHTML = '<div class="sub">' + res.message + '</div>'; return; }
+        document.getElementById('holidayList').innerHTML = res.holidays.length ?
+          res.holidays.map(function (h) {
+            return '<div class="hist-row"><span>' + h.date + '</span><span>' + h.name + '</span><span class="hist-status">' + h.type + '</span></div>';
+          }).join('') : '<div class="sub">No holidays configured yet.</div>';
+      }).getHolidayCalendar(sessionToken);
+    }
+
+    let pendingProfilePhotoBase64 = null;
+    function loadProfile() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) return;
+        const p = res.profile;
+        document.getElementById('profileEmail').value = p.email || '';
+        document.getElementById('profilePhone').value = p.phone || '';
+        const img = document.getElementById('profilePhotoImg');
+        if (p.profilePhotoURL) { img.src = p.profilePhotoURL; img.style.display = 'block'; }
+      }).getMyProfile(sessionToken);
+    }
+
+    function handleProfilePhotoChange(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function () {
+        pendingProfilePhotoBase64 = reader.result;
+        const img = document.getElementById('profilePhotoImg');
+        img.src = reader.result; img.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function saveProfile() {
+      const doSave = function () {
+        google.script.run.withSuccessHandler(function (res) {
+          showSmallMsg('profileMsg', res.message, res.success);
+        }).updateMyProfile(sessionToken, {
+          email: document.getElementById('profileEmail').value.trim(),
+          phone: document.getElementById('profilePhone').value.trim()
+        });
+      };
+      if (pendingProfilePhotoBase64) {
+        google.script.run.withSuccessHandler(function () {
+          pendingProfilePhotoBase64 = null;
+          doSave();
+        }).uploadMyProfilePhoto(sessionToken, pendingProfilePhotoBase64);
+      } else {
+        doSave();
+      }
+    }
+
+    function submitPasswordChange() {
+      const oldPw = document.getElementById('oldPassword').value;
+      const newPw = document.getElementById('newPassword').value;
+      google.script.run.withSuccessHandler(function (res) {
+        showSmallMsg('passwordMsg', res.message, res.success);
+        if (res.success) {
+          document.getElementById('oldPassword').value = '';
+          document.getElementById('newPassword').value = '';
+        }
+      }).changeMyPassword(sessionToken, oldPw, newPw);
+    }
+
+    function showSmallMsg(elId, text, ok) {
+      const el = document.getElementById(elId);
+      el.innerHTML = '<div class="small-msg ' + (ok ? 'ok' : 'err') + '">' + text + '</div>';
+      setTimeout(function () { el.innerHTML = ''; }, 6000);
+    }
+
+    // ------------------------------------------------------------------
+    // NOTIFICATIONS (Module 8)
+    // ------------------------------------------------------------------
+    let notifPanelOpen = false;
+    function toggleNotifications() {
+      notifPanelOpen = !notifPanelOpen;
+      document.getElementById('notifPanel').style.display = notifPanelOpen ? 'block' : 'none';
+      if (notifPanelOpen) loadNotifications();
+    }
+
+    function loadNotifications() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) return;
+        const badge = document.getElementById('notifBadge');
+        if (res.unreadCount > 0) { badge.style.display = 'block'; badge.textContent = res.unreadCount; }
+        else { badge.style.display = 'none'; }
+
+        const panel = document.getElementById('notifPanel');
+        panel.innerHTML = res.notifications.length ? res.notifications.map(function (n) {
+          const unread = n.IsRead !== 'true';
+          return '<div style="padding:8px 4px; border-bottom:1px solid rgba(255,255,255,0.1); font-size:11.5px; ' +
+            (unread ? 'font-weight:700;' : 'opacity:0.65;') + ' cursor:pointer;" onclick="markRead(\'' + n.NotificationID + '\')">' +
+            '<div>' + n.Type + '</div><div style="font-weight:400; opacity:0.85;">' + n.Message + '</div>' +
+            '<div style="font-size:10px; opacity:0.6; margin-top:2px;">' + n.CreatedTime + '</div></div>';
+        }).join('') : '<div class="sub" style="padding:6px;">No notifications yet.</div>';
+      }).getMyNotifications(sessionToken);
+    }
+
+    function markRead(notificationId) {
+      google.script.run.withSuccessHandler(function () { loadNotifications(); }).markNotificationRead(sessionToken, notificationId);
+    }
+
+    setInterval(function () { google.script.run.withSuccessHandler(function (res) {
+      if (!res.success) return;
+      const badge = document.getElementById('notifBadge');
+      if (res.unreadCount > 0) { badge.style.display = 'block'; badge.textContent = res.unreadCount; }
+      else { badge.style.display = 'none'; }
+    }).getMyNotifications(sessionToken); }, 45000);
+
+    function applyTheme(theme) {
+      document.body.setAttribute('data-theme', theme.toLowerCase());
+      document.getElementById('themeToggleBtn').textContent = theme.toLowerCase() === 'light' ? '☀️ Light' : '🌙 Dark';
+    }
+    function toggleTheme() {
+      const current = document.body.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('rsams_theme', next);
+      applyTheme(next);
+    }
+    (function initTheme() {
+      const saved = localStorage.getItem('rsams_theme');
+      applyTheme(saved || 'dark');
+    })();
+
+    loadNotifications();
+    loadHistory();
+    refreshStatus();
+    updateQueueBadge();
+    syncOfflineQueue();
+  </script>
+</body>
+</html>

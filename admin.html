@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RS Attendance Management System — Admin</title>
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root { --gov-blue:#0b3d91; --gov-blue-dark:#072a66; --gov-saffron:#ff9933; --glass:rgba(255,255,255,0.08); --border:rgba(255,255,255,0.18); }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI', Roboto, sans-serif; }
+    body { background: linear-gradient(160deg, var(--gov-blue-dark), #0d2f6b 55%, #071c40); min-height:100vh; color:#eef2f8; padding-bottom:60px; }
+    header { display:flex; align-items:center; justify-content:space-between; padding:16px 22px; background:rgba(0,0,0,0.2); border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
+    header h1 { font-size:16px; }
+    header .sub { font-size:11px; opacity:0.75; }
+    .header-actions button { background:rgba(255,255,255,0.12); border:1px solid var(--border); color:#fff; padding:8px 14px; border-radius:8px; font-size:12px; cursor:pointer; margin-left:8px; }
+    .header-actions button:hover { background:rgba(255,255,255,0.22); }
+    main { max-width:1200px; margin:0 auto; padding:20px; }
+    .section-title { font-size:14px; font-weight:700; margin:26px 0 12px; color:var(--gov-saffron); text-transform:uppercase; letter-spacing:0.5px; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px; }
+    .card { background:var(--glass); border:1px solid var(--border); border-radius:14px; padding:14px 16px; }
+    .card .num { font-size:24px; font-weight:800; }
+    .card .label { font-size:11px; opacity:0.75; margin-top:2px; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    @media (max-width:800px){ .grid2, .grid3 { grid-template-columns:1fr; } }
+    .panel { background:var(--glass); border:1px solid var(--border); border-radius:14px; padding:16px; }
+    .panel h3 { font-size:12.5px; margin-bottom:10px; opacity:0.9; }
+    .list-item { display:flex; justify-content:space-between; font-size:12px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.08); }
+    .list-item:last-child { border-bottom:none; }
+    .empty { font-size:12px; opacity:0.6; padding:8px 0; }
+    .tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+    .tab-btn { background:rgba(255,255,255,0.08); border:1px solid var(--border); color:#fff; padding:8px 16px; border-radius:20px; font-size:12px; cursor:pointer; }
+    .tab-btn.active { background:var(--gov-saffron); color:#1a1200; font-weight:700; border-color:transparent; }
+    table { width:100%; border-collapse:collapse; font-size:11.5px; }
+    th, td { text-align:left; padding:7px 8px; border-bottom:1px solid rgba(255,255,255,0.1); white-space:nowrap; }
+    th { opacity:0.7; font-weight:600; position:sticky; top:0; background:#0d2f6b; }
+    .table-wrap { overflow-x:auto; max-height:480px; overflow-y:auto; border-radius:10px; }
+    .pill { padding:3px 9px; border-radius:12px; font-size:10.5px; font-weight:700; display:inline-block; }
+    .pill.present { background:rgba(31,169,113,0.25); color:#5be3ab; }
+    .pill.late { background:rgba(255,153,51,0.25); color:#ffb85c; }
+    .pill.half { background:rgba(255,196,0,0.25); color:#ffe17a; }
+    .pill.holiday, .pill.weeklyoff { background:rgba(120,150,255,0.25); color:#a9bcff; }
+    .pill.pending { background:rgba(229,72,77,0.25); color:#ff9a9d; }
+    a.link { color:#7fc8ff; text-decoration:none; font-size:11px; }
+    a.link:hover { text-decoration:underline; }
+    .filters { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+    .filters input, .filters select { padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.08); color:#fff; font-size:12px; }
+    .filters input::placeholder { color:rgba(255,255,255,0.5); }
+    .btn { padding:9px 16px; border-radius:8px; border:none; background:var(--gov-saffron); color:#1a1200; font-weight:700; font-size:12px; cursor:pointer; }
+    .btn.secondary { background:rgba(255,255,255,0.12); color:#fff; }
+    .btn.small { padding:5px 10px; font-size:11px; }
+    .form-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px; margin-bottom:10px; }
+    .form-grid input, .form-grid select { padding:9px 10px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.08); color:#fff; font-size:12px; width:100%; }
+    .msg { font-size:12px; padding:8px 10px; border-radius:8px; margin-top:8px; }
+    .msg.ok { background:rgba(31,169,113,0.2); border:1px solid rgba(31,169,113,0.4); }
+    .msg.err { background:rgba(229,72,77,0.2); border:1px solid rgba(229,72,77,0.4); }
+    canvas { max-height:260px; }
+    body[data-theme="light"] { background: linear-gradient(160deg, #eef3fb, #dbe7fb 55%, #f4f7fc); color:#14213d; }
+    body[data-theme="light"] header { background: rgba(11,61,145,0.06); border-color: rgba(11,61,145,0.15); }
+    body[data-theme="light"] .card, body[data-theme="light"] .panel { background: rgba(11,61,145,0.05); border-color: rgba(11,61,145,0.18); color:#14213d; }
+    body[data-theme="light"] th { background:#dbe7fb; color:#14213d; }
+    body[data-theme="light"] .filters input, body[data-theme="light"] .filters select,
+    body[data-theme="light"] .form-grid input, body[data-theme="light"] .form-grid select { background: rgba(11,61,145,0.05); border-color: rgba(11,61,145,0.25); color:#14213d; }
+    body[data-theme="light"] .header-actions button, body[data-theme="light"] .tab-btn { background: rgba(11,61,145,0.08); border-color: rgba(11,61,145,0.25); color:#14213d; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>RS Attendance Management System — Admin Dashboard</h1>
+      <div class="sub">Office of Block Chief Medical Officer, Banera, Bhilwara</div>
+    </div>
+    <div class="header-actions">
+      <button onclick="toggleTheme()" id="themeToggleBtn">🌙 Dark</button>
+      <button onclick="goToMyAttendance()">My Attendance</button>
+      <button onclick="handleLogout()">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="section-title">Executive Overview — Today</div>
+    <div class="cards" id="statsCards"><div class="empty">Loading…</div></div>
+
+    <div class="grid3" style="margin-top:18px;">
+      <div class="panel">
+        <h3>Live Working Employees</h3>
+        <div id="liveWorkingList"><div class="empty">Loading…</div></div>
+      </div>
+      <div class="panel">
+        <h3>Outside Geofence Today</h3>
+        <div id="outsideGeofenceList"><div class="empty">Loading…</div></div>
+      </div>
+      <div class="panel">
+        <h3>Late Ranking (Top 10)</h3>
+        <div id="lateRankingList"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Attendance Trend</div>
+    <div class="panel">
+      <div class="tabs">
+        <button class="tab-btn active" id="trendWeeklyBtn" onclick="loadTrend('weekly')">Weekly</button>
+        <button class="tab-btn" id="trendMonthlyBtn" onclick="loadTrend('monthly')">Monthly</button>
+      </div>
+      <canvas id="trendChart"></canvas>
+    </div>
+
+    <div class="section-title">Reports</div>
+    <div class="panel">
+      <div class="filters">
+        <select id="repType">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly" selected>Monthly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="yearly">Yearly</option>
+          <option value="custom">Custom Range</option>
+        </select>
+        <input type="date" id="repFromDate" style="display:none;">
+        <input type="date" id="repToDate" style="display:none;">
+        <select id="repGroupBy">
+          <option value="none">No Grouping (detail rows)</option>
+          <option value="employee">Employee-wise</option>
+          <option value="department">Department-wise</option>
+          <option value="office">Office-wise</option>
+        </select>
+        <select id="repSpecial">
+          <option value="">Full Report</option>
+          <option value="late">Late Report</option>
+          <option value="gps">GPS Report</option>
+          <option value="photo">Photo Report</option>
+          <option value="workingHours">Working Hours Report</option>
+          <option value="missingMarkOut">Missing Mark Out</option>
+          <option value="outsideGeofence">Outside Geofence</option>
+        </select>
+        <input type="text" id="repEmployeeId" placeholder="Employee ID contains…">
+        <input type="text" id="repDepartment" placeholder="Department">
+        <button class="btn small" onclick="runReport()">Generate</button>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <button class="btn small secondary" onclick="reportExport('csv')">Export CSV</button>
+        <button class="btn small secondary" onclick="reportExport('xlsx')">Export Excel</button>
+        <button class="btn small secondary" onclick="reportExport('pdf')">Export PDF</button>
+      </div>
+      <div id="reportMeta" style="font-size:11px; opacity:0.7; margin-bottom:8px;"></div>
+      <div id="reportExportMsg"></div>
+      <div class="table-wrap" id="reportTableWrap">
+        <table>
+          <thead id="reportTableHead"><tr><th>Generate a report to see results</th></tr></thead>
+          <tbody id="reportTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-title">Attendance Records</div>
+    <div class="panel">
+      <div class="filters">
+        <input type="text" id="fEmployeeId" placeholder="Employee ID contains…">
+        <input type="text" id="fDepartment" placeholder="Department">
+        <select id="fStatus">
+          <option value="">All Statuses</option>
+          <option>Present</option><option>Late</option><option>Half Day</option>
+          <option>Half Day (Short Hours)</option><option>Holiday</option><option>Weekly Off</option>
+        </select>
+        <input type="date" id="fFromDate">
+        <input type="date" id="fToDate">
+        <label style="font-size:12px; display:flex; align-items:center; gap:5px;">
+          <input type="checkbox" id="fPendingOnly" style="width:auto;"> Pending only
+        </label>
+        <button class="btn small" onclick="loadRecords()">Filter</button>
+        <button class="btn small secondary" onclick="exportCSV()">Export CSV</button>
+        <button class="btn small secondary" onclick="window.print()">Print</button>
+      </div>
+      <div id="recordsMeta" style="font-size:11px; opacity:0.7; margin-bottom:8px;"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Employee</th><th>Date</th><th>In</th><th>Out</th><th>Hours</th><th>Status</th>
+            <th>Distance</th><th>Approval</th><th>Evidence</th><th>Action</th>
+          </tr></thead>
+          <tbody id="recordsBody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-title">Employee Management</div>
+    <div class="panel">
+      <div id="empMsg"></div>
+      <div class="form-grid">
+        <input type="text" id="newEmpId" placeholder="Employee ID">
+        <input type="text" id="newEmpName" placeholder="Full Name">
+        <select id="newEmpRole"><option value="Employee">Employee</option><option value="Admin">Admin</option></select>
+        <input type="text" id="newEmpDept" placeholder="Department">
+        <input type="text" id="newEmpDesig" placeholder="Designation">
+        <input type="text" id="newEmpOffice" placeholder="Office ID">
+        <input type="email" id="newEmpEmail" placeholder="Email (optional)">
+        <input type="text" id="newEmpPhone" placeholder="Phone (optional)">
+        <button class="btn" onclick="createEmployeeSubmit()">Add Employee</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Dept</th><th>Office</th><th>Status</th><th>Change Status</th></tr></thead>
+          <tbody id="employeesBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-title">Office Master (Geofencing)</div>
+    <div class="panel">
+      <div id="officeMsg"></div>
+      <div class="form-grid">
+        <input type="text" id="newOfficeName" placeholder="Office Name">
+        <input type="text" id="newOfficeLat" placeholder="Latitude">
+        <input type="text" id="newOfficeLng" placeholder="Longitude">
+        <input type="text" id="newOfficeRadius" placeholder="Radius (m, default 200)">
+        <input type="text" id="newOfficeAddress" placeholder="Address (optional)">
+        <button class="btn" onclick="createOfficeSubmit()">Add Office</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Office ID</th><th>Name</th><th>Lat</th><th>Lng</th><th>Radius(m)</th><th>Status</th></tr></thead>
+          <tbody id="officesBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section-title">Settings</div>
+    <div class="panel">
+      <div id="settingsMsg"></div>
+      <div id="settingsForm"><div class="empty">Loading…</div></div>
+      <button class="btn" style="margin-top:14px;" onclick="saveSettings()">Save All Settings</button>
+    </div>
+
+    <div class="section-title">Pending Leave Requests</div>
+    <div class="panel">
+      <div id="leaveRequestsBody"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="section-title">Holiday Calendar Management</div>
+    <div class="panel">
+      <div id="holidayMsg"></div>
+      <div class="form-grid">
+        <input type="date" id="newHolidayDate">
+        <input type="text" id="newHolidayName" placeholder="Holiday Name">
+        <select id="newHolidayType"><option>General</option><option>Restricted</option><option>National</option></select>
+        <button class="btn" onclick="addHolidaySubmit()">Add Holiday</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Name</th><th>Type</th><th></th></tr></thead>
+          <tbody id="holidaysBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const session = requireSession_(); // redirects to index.html if not logged in
+    const sessionToken = session.token;
+    let trendChart = null;
+
+    function goToMyAttendance() {
+      localStorage.setItem('rsams_admin_viewing_own', 'true');
+      window.location.href = 'home.html';
+    }
+
+    function handleLogout() {
+      google.script.run.withSuccessHandler(function () {
+        clearSession_();
+        window.location.href = 'index.html';
+      }).logout(sessionToken);
+    }
+
+    function loadDashboard() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('statsCards').innerHTML = '<div class="empty">' + res.message + '</div>'; return; }
+        const s = res.stats;
+        const cards = [
+          ['Total Employees', s.totalEmployees], ['Present', s.present], ['Late', s.late],
+          ['Half Day', s.halfDay], ['Absent', s.absent], ['Holiday', s.holiday],
+          ['Weekly Off', s.weeklyOff], ['Pending Approvals', s.pendingApprovals]
+        ];
+        document.getElementById('statsCards').innerHTML = cards.map(function (c) {
+          return '<div class="card"><div class="num">' + c[1] + '</div><div class="label">' + c[0] + '</div></div>';
+        }).join('');
+
+        document.getElementById('liveWorkingList').innerHTML = res.liveWorking.length ?
+          res.liveWorking.map(function (e) { return '<div class="list-item"><span>' + e.name + ' (' + e.employeeId + ')</span><span>' + e.markIn + '</span></div>'; }).join('') :
+          '<div class="empty">No one currently marked in without mark-out.</div>';
+
+        document.getElementById('outsideGeofenceList').innerHTML = res.outsideGeofence.length ?
+          res.outsideGeofence.map(function (e) { return '<div class="list-item"><span>' + e.name + '</span><span>' + e.distance + 'm</span></div>'; }).join('') :
+          '<div class="empty">No geofence exceptions today.</div>';
+
+        document.getElementById('lateRankingList').innerHTML = res.lateRanking.length ?
+          res.lateRanking.map(function (e) { return '<div class="list-item"><span>' + e.name + '</span><span>' + e.lateMinutes + ' min</span></div>'; }).join('') :
+          '<div class="empty">No late arrivals today.</div>';
+      }).getDashboardStats(sessionToken);
+    }
+
+    function loadTrend(mode) {
+      document.getElementById('trendWeeklyBtn').classList.toggle('active', mode === 'weekly');
+      document.getElementById('trendMonthlyBtn').classList.toggle('active', mode === 'monthly');
+      const fn = mode === 'weekly' ? 'getWeeklyTrend' : 'getMonthlyTrend';
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) return;
+        const labels = res.trend.map(function (t) { return t.date.slice(5); });
+        const present = res.trend.map(function (t) { return t.present; });
+        const late = res.trend.map(function (t) { return t.late; });
+        const halfDay = res.trend.map(function (t) { return t.halfDay; });
+
+        if (trendChart) trendChart.destroy();
+        trendChart = new Chart(document.getElementById('trendChart'), {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Present', data: present, borderColor: '#5be3ab', backgroundColor: 'rgba(91,227,171,0.15)', tension: 0.3 },
+              { label: 'Late', data: late, borderColor: '#ffb85c', backgroundColor: 'rgba(255,184,92,0.15)', tension: 0.3 },
+              { label: 'Half Day', data: halfDay, borderColor: '#ffe17a', backgroundColor: 'rgba(255,225,122,0.15)', tension: 0.3 }
+            ]
+          },
+          options: { responsive: true, plugins: { legend: { labels: { color: '#eef2f8' } } },
+            scales: { x: { ticks: { color: '#cfd8e8' } }, y: { ticks: { color: '#cfd8e8' }, beginAtZero: true } } }
+        });
+      })[fn](sessionToken);
+    }
+
+    function statusPillClass(status) {
+      if (status === 'Present') return 'present';
+      if (status === 'Late') return 'late';
+      if (String(status).indexOf('Half Day') === 0) return 'half';
+      if (status === 'Holiday' || status === 'Weekly Off') return 'holiday';
+      return '';
+    }
+
+    function loadRecords() {
+      const filters = {
+        employeeId: document.getElementById('fEmployeeId').value.trim(),
+        department: document.getElementById('fDepartment').value.trim(),
+        status: document.getElementById('fStatus').value,
+        fromDate: document.getElementById('fFromDate').value,
+        toDate: document.getElementById('fToDate').value,
+        pendingOnly: document.getElementById('fPendingOnly').checked
+      };
+      document.getElementById('recordsBody').innerHTML = '<tr><td colspan="10" class="empty">Loading…</td></tr>';
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('recordsBody').innerHTML = '<tr><td colspan="10" class="empty">' + res.message + '</td></tr>'; return; }
+        document.getElementById('recordsMeta').textContent = res.totalMatched + ' record(s) matched' + (res.capped ? ' (showing latest 500)' : '');
+        if (res.records.length === 0) {
+          document.getElementById('recordsBody').innerHTML = '<tr><td colspan="10" class="empty">No records match these filters.</td></tr>';
+          return;
+        }
+        document.getElementById('recordsBody').innerHTML = res.records.map(function (r) {
+          const evidence = (r.SelfieInURL ? '<a class="link" href="' + r.SelfieInURL + '" target="_blank">Selfie-In</a>' : '') +
+            (r.MapsURLIn ? ' <a class="link" href="' + r.MapsURLIn + '" target="_blank">Map-In</a>' : '');
+          const approvalPill = r.AdminApproval === 'Pending' ? '<span class="pill pending">Pending</span>' : (r.AdminApproval || '');
+          const action = r.AdminApproval === 'Pending' ?
+            '<button class="btn small" onclick="decide(\'' + r.AuditID + '\',\'approve\')">✓</button> ' +
+            '<button class="btn small secondary" onclick="decide(\'' + r.AuditID + '\',\'reject\')">✕</button>' : '';
+          return '<tr>' +
+            '<td>' + r.EmployeeName + '<br><span style="opacity:0.6">' + r.EmployeeID + '</span></td>' +
+            '<td>' + r.Date + '</td><td>' + (r.MarkIn || '-') + '</td><td>' + (r.MarkOut || '-') + '</td>' +
+            '<td>' + (r.WorkingHours || '-') + '</td>' +
+            '<td><span class="pill ' + statusPillClass(r.AttendanceStatus) + '">' + r.AttendanceStatus + '</span></td>' +
+            '<td>' + (r.DistanceMeters || '-') + 'm</td><td>' + approvalPill + '</td>' +
+            '<td>' + evidence + '</td><td>' + action + '</td>' +
+            '</tr>';
+        }).join('');
+      }).getAttendanceRecords(sessionToken, filters);
+    }
+
+    function decide(auditId, decision) {
+      const remark = decision === 'reject' ? (prompt('Optional remark for rejection:') || '') : '';
+      google.script.run.withSuccessHandler(function () { loadRecords(); loadDashboard(); }).approveAttendance(sessionToken, auditId, decision, remark);
+    }
+
+    function exportCSV() {
+      const filters = {
+        employeeId: document.getElementById('fEmployeeId').value.trim(),
+        department: document.getElementById('fDepartment').value.trim(),
+        status: document.getElementById('fStatus').value,
+        fromDate: document.getElementById('fFromDate').value,
+        toDate: document.getElementById('fToDate').value,
+        pendingOnly: document.getElementById('fPendingOnly').checked
+      };
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { alert(res.message); return; }
+        const blob = new Blob([res.csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'attendance_export_' + Date.now() + '.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }).exportAttendanceCSV(sessionToken, filters);
+    }
+
+    function loadEmployees() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('employeesBody').innerHTML = '<tr><td colspan="7" class="empty">' + res.message + '</td></tr>'; return; }
+        document.getElementById('employeesBody').innerHTML = res.employees.map(function (e) {
+          const options = ['Active', 'Inactive', 'Suspended', 'Transferred', 'Retired', 'Deleted'].map(function (s) {
+            return '<option value="' + s + '"' + (s === e.status ? ' selected' : '') + '>' + s + '</option>';
+          }).join('');
+          return '<tr><td>' + e.employeeId + '</td><td>' + e.fullName + '</td><td>' + e.role + '</td><td>' + e.department +
+            '</td><td>' + e.officeId + '</td><td>' + e.status + '</td>' +
+            '<td><select onchange="changeStatus(\'' + e.employeeId + '\', this.value)">' + options + '</select></td></tr>';
+        }).join('') || '<tr><td colspan="7" class="empty">No employees yet.</td></tr>';
+      }).getEmployeeList(sessionToken);
+    }
+
+    function changeStatus(employeeId, newStatus) {
+      google.script.run.withSuccessHandler(function (res) {
+        showMsg('empMsg', res.message, res.success);
+        loadEmployees(); loadDashboard();
+      }).updateEmployeeStatus(sessionToken, employeeId, newStatus);
+    }
+
+    function createEmployeeSubmit() {
+      const payload = {
+        employeeId: document.getElementById('newEmpId').value.trim(),
+        fullName: document.getElementById('newEmpName').value.trim(),
+        role: document.getElementById('newEmpRole').value,
+        department: document.getElementById('newEmpDept').value.trim(),
+        designation: document.getElementById('newEmpDesig').value.trim(),
+        officeId: document.getElementById('newEmpOffice').value.trim(),
+        email: document.getElementById('newEmpEmail').value.trim(),
+        phone: document.getElementById('newEmpPhone').value.trim()
+      };
+      google.script.run.withSuccessHandler(function (res) {
+        showMsg('empMsg', res.message, res.success);
+        if (res.success) { loadEmployees(); loadDashboard(); }
+      }).createEmployee(sessionToken, payload);
+    }
+
+    function loadOffices() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('officesBody').innerHTML = '<tr><td colspan="6" class="empty">' + res.message + '</td></tr>'; return; }
+        document.getElementById('officesBody').innerHTML = res.offices.map(function (o) {
+          return '<tr><td>' + o.OfficeID + '</td><td>' + o.OfficeName + '</td><td>' + o.Latitude + '</td><td>' + o.Longitude +
+            '</td><td>' + o.RadiusMeters + '</td><td>' + o.Status + '</td></tr>';
+        }).join('') || '<tr><td colspan="6" class="empty">No offices yet — add one below.</td></tr>';
+      }).getOfficeList(sessionToken);
+    }
+
+    function createOfficeSubmit() {
+      const payload = {
+        officeName: document.getElementById('newOfficeName').value.trim(),
+        latitude: document.getElementById('newOfficeLat').value.trim(),
+        longitude: document.getElementById('newOfficeLng').value.trim(),
+        radiusMeters: document.getElementById('newOfficeRadius').value.trim(),
+        address: document.getElementById('newOfficeAddress').value.trim()
+      };
+      google.script.run.withSuccessHandler(function (res) {
+        showMsg('officeMsg', res.message, res.success);
+        if (res.success) loadOffices();
+      }).createOffice(sessionToken, payload);
+    }
+
+    function showMsg(elId, text, ok) {
+      const el = document.getElementById(elId);
+      el.innerHTML = '<div class="msg ' + (ok ? 'ok' : 'err') + '">' + text + '</div>';
+      setTimeout(function () { el.innerHTML = ''; }, 6000);
+    }
+
+    // ------------------------------------------------------------------
+    // REPORTS (Module 7)
+    // ------------------------------------------------------------------
+    document.getElementById('repType').addEventListener('change', function () {
+      const isCustom = this.value === 'custom';
+      document.getElementById('repFromDate').style.display = isCustom ? 'inline-block' : 'none';
+      document.getElementById('repToDate').style.display = isCustom ? 'inline-block' : 'none';
+    });
+
+    function collectReportConfig() {
+      return {
+        reportType: document.getElementById('repType').value,
+        fromDate: document.getElementById('repFromDate').value,
+        toDate: document.getElementById('repToDate').value,
+        groupBy: document.getElementById('repGroupBy').value,
+        specialReport: document.getElementById('repSpecial').value,
+        employeeId: document.getElementById('repEmployeeId').value.trim(),
+        department: document.getElementById('repDepartment').value.trim()
+      };
+    }
+
+    function runReport() {
+      document.getElementById('reportTableBody').innerHTML = '';
+      document.getElementById('reportTableHead').innerHTML = '<tr><th>Loading…</th></tr>';
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('reportTableHead').innerHTML = '<tr><th>' + res.message + '</th></tr>'; return; }
+        document.getElementById('reportMeta').textContent = res.periodLabel + ' — ' + res.totalMatched + ' record(s) matched' + (res.capped ? ' (showing first 1000)' : '');
+
+        if (res.grouped) {
+          document.getElementById('reportTableHead').innerHTML =
+            '<tr><th>Group</th><th>Days</th><th>Present</th><th>Late</th><th>Half Day</th><th>Missing Out</th><th>Total Hours</th><th>Overtime (min)</th><th>Late (min)</th></tr>';
+          document.getElementById('reportTableBody').innerHTML = res.grouped.map(function (g) {
+            return '<tr><td>' + g.group + '</td><td>' + g.days + '</td><td>' + g.present + '</td><td>' + g.late +
+              '</td><td>' + g.halfDay + '</td><td>' + g.absentMarkOut + '</td><td>' + g.totalHours +
+              '</td><td>' + g.totalOvertime + '</td><td>' + g.totalLateMinutes + '</td></tr>';
+          }).join('') || '<tr><td colspan="9" class="empty">No data for this period.</td></tr>';
+        } else {
+          document.getElementById('reportTableHead').innerHTML =
+            '<tr><th>Employee</th><th>Date</th><th>In</th><th>Out</th><th>Hours</th><th>Status</th><th>Distance</th><th>Evidence</th></tr>';
+          document.getElementById('reportTableBody').innerHTML = res.records.map(function (r) {
+            const evidence = (r.SelfieInURL ? '<a class="link" href="' + r.SelfieInURL + '" target="_blank">Selfie</a>' : '') +
+              (r.MapsURLIn ? ' <a class="link" href="' + r.MapsURLIn + '" target="_blank">Map</a>' : '');
+            return '<tr><td>' + r.EmployeeName + ' (' + r.EmployeeID + ')</td><td>' + r.Date + '</td><td>' + (r.MarkIn || '-') +
+              '</td><td>' + (r.MarkOut || '-') + '</td><td>' + (r.WorkingHours || '-') + '</td>' +
+              '<td><span class="pill ' + statusPillClass(r.AttendanceStatus) + '">' + r.AttendanceStatus + '</span></td>' +
+              '<td>' + (r.DistanceMeters || '-') + 'm</td><td>' + evidence + '</td></tr>';
+          }).join('') || '<tr><td colspan="8" class="empty">No data for this period.</td></tr>';
+        }
+      }).generateReport(sessionToken, collectReportConfig());
+    }
+
+    function reportExport(format) {
+      const config = collectReportConfig();
+      if (format === 'csv') {
+        google.script.run.withSuccessHandler(function (res) {
+          if (!res.success) { showMsg('reportExportMsg', res.message, false); return; }
+          const blob = new Blob([res.csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'report_' + Date.now() + '.csv';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }).exportReportCSV(sessionToken, config);
+        return;
+      }
+      const fn = format === 'xlsx' ? 'exportReportExcel' : 'exportReportPDF';
+      showMsg('reportExportMsg', 'Preparing ' + format.toUpperCase() + ' export…', true);
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { showMsg('reportExportMsg', res.message, false); return; }
+        showMsg('reportExportMsg', 'Export ready — <a class="link" href="' + res.url + '" target="_blank">Download ' + format.toUpperCase() + '</a> (' + res.rowCount + ' rows)', true);
+      })[fn](sessionToken, config);
+    }
+
+    // ------------------------------------------------------------------
+    // SETTINGS (Module 8)
+    // ------------------------------------------------------------------
+    function loadSettings() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('settingsForm').innerHTML = '<div class="empty">' + res.message + '</div>'; return; }
+        const groups = {};
+        res.settings.forEach(function (s) { (groups[s.group] = groups[s.group] || []).push(s); });
+
+        document.getElementById('settingsForm').innerHTML = Object.keys(groups).map(function (groupName) {
+          const fields = groups[groupName].map(function (s) {
+            const inputId = 'setting_' + s.key;
+            let control;
+            if (s.type === 'select') {
+              control = '<select id="' + inputId + '">' + s.options.map(function (o) {
+                return '<option value="' + o + '"' + (o === s.value ? ' selected' : '') + '>' + o + '</option>';
+              }).join('') + '</select>';
+            } else {
+              control = '<input type="' + (s.type === 'number' ? 'number' : 'text') + '" id="' + inputId + '" value="' + s.value + '">';
+            }
+            return '<div style="margin-bottom:8px;"><label style="display:block; font-size:11px; opacity:0.75; margin-bottom:4px;">' + s.label + '</label>' + control + '</div>';
+          }).join('');
+          return '<div style="margin-bottom:16px;"><div style="font-weight:700; font-size:12px; color:var(--gov-saffron); margin-bottom:8px;">' + groupName + '</div>' +
+            '<div class="form-grid">' + fields + '</div></div>';
+        }).join('');
+      }).getAllSettings(sessionToken);
+    }
+
+    function saveSettings() {
+      const inputs = document.querySelectorAll('#settingsForm input, #settingsForm select');
+      const updates = {};
+      inputs.forEach(function (el) { updates[el.id.replace('setting_', '')] = el.value; });
+      google.script.run.withSuccessHandler(function (res) {
+        showMsg('settingsMsg', res.message, res.success);
+      }).updateSettings(sessionToken, updates);
+    }
+
+    // ------------------------------------------------------------------
+    // LEAVE REQUESTS (Module 8 admin counterpart to Module 6)
+    // ------------------------------------------------------------------
+    function loadLeaveRequests() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('leaveRequestsBody').innerHTML = '<div class="empty">' + res.message + '</div>'; return; }
+        document.getElementById('leaveRequestsBody').innerHTML = res.requests.length ? res.requests.map(function (r) {
+          return '<div class="list-item"><span>' + r.EmployeeID + ' — ' + r.LeaveType + ' (' + r.FromDate + ' to ' + r.ToDate + ', ' + r.Days + 'd)</span>' +
+            '<span><button class="btn small" onclick="decideLeave(\'' + r.LeaveID + '\',\'approve\')">✓</button> ' +
+            '<button class="btn small secondary" onclick="decideLeave(\'' + r.LeaveID + '\',\'reject\')">✕</button></span></div>';
+        }).join('') : '<div class="empty">No pending leave requests.</div>';
+      }).getPendingLeaveRequests(sessionToken);
+    }
+
+    function decideLeave(leaveId, decision) {
+      google.script.run.withSuccessHandler(function () { loadLeaveRequests(); }).decideLeaveRequest(sessionToken, leaveId, decision);
+    }
+
+    // ------------------------------------------------------------------
+    // HOLIDAY CALENDAR MANAGEMENT
+    // ------------------------------------------------------------------
+    function loadHolidayAdmin() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res.success) { document.getElementById('holidaysBody').innerHTML = '<tr><td colspan="4" class="empty">' + res.message + '</td></tr>'; return; }
+        document.getElementById('holidaysBody').innerHTML = res.holidays.length ? res.holidays.map(function (h) {
+          return '<tr><td>' + h.date + '</td><td>' + h.name + '</td><td>' + h.type + '</td>' +
+            '<td><button class="btn small secondary" onclick="removeHoliday(\'' + h.holidayId + '\')">Remove</button></td></tr>';
+        }).join('') : '<tr><td colspan="4" class="empty">No holidays configured yet.</td></tr>';
+      }).getHolidayCalendarAdmin(sessionToken);
+    }
+
+    function addHolidaySubmit() {
+      const payload = {
+        date: document.getElementById('newHolidayDate').value,
+        name: document.getElementById('newHolidayName').value.trim(),
+        type: document.getElementById('newHolidayType').value
+      };
+      google.script.run.withSuccessHandler(function (res) {
+        showMsg('holidayMsg', res.message, res.success);
+        if (res.success) loadHolidayAdmin();
+      }).addHoliday(sessionToken, payload);
+    }
+
+    function removeHoliday(holidayId) {
+      google.script.run.withSuccessHandler(function (res) {
+        showMsg('holidayMsg', res.message, res.success);
+        loadHolidayAdmin();
+      }).deleteHoliday(sessionToken, holidayId);
+    }
+
+    function applyTheme(theme) {
+      document.body.setAttribute('data-theme', theme.toLowerCase());
+      document.getElementById('themeToggleBtn').textContent = theme.toLowerCase() === 'light' ? '☀️ Light' : '🌙 Dark';
+    }
+    function toggleTheme() {
+      const current = document.body.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('rsams_theme', next);
+      applyTheme(next);
+    }
+    (function initTheme() { applyTheme(localStorage.getItem('rsams_theme') || 'dark'); })();
+
+    loadDashboard();
+    loadTrend('weekly');
+    loadRecords();
+    loadEmployees();
+    loadOffices();
+    loadSettings();
+    loadLeaveRequests();
+    loadHolidayAdmin();
+  </script>
+</body>
+</html>
